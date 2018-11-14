@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentNetworking\TcpFramework.csproj" />
+    <ProjectReference Include="..\TcpFramework\TcpFramework.csproj" />
   </ItemGroup>
 
 </Project>
