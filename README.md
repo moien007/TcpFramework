@@ -20,3 +20,7 @@ Available on NuGet at https://www.nuget.org/packages/TcpFramework
 
 ## TODO
 This project is at very begining but the core feature which is client send\receive is complete.
+- Add methods summaries
+- Add documentation
+- Comment code lines
+- Reworking and cleanup TcpService class
