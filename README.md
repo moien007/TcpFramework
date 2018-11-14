@@ -10,6 +10,11 @@ Some notable features :
 * Compatible with low-level socket APIs such as Socket.Shutdown (half-open sockets), Socket.IsBlocking (non-blocking sockets) and SocketFlags
 * Provides fluent API
 
+## Supported Runtimes
+- .NET Framework 4.5
+- .NET Standard (1.3 and 2.0) 
+- .NET Core 2.1 (recommended)
+
 ## NuGet
 Available on NuGet at https://www.nuget.org/packages/TcpFramework
 
