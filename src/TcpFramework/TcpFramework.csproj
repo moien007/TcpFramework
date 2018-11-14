@@ -2,6 +2,15 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard1.3;netcoreapp2.1;net45</TargetFrameworks>
+    <Authors>Moien007</Authors>
+    <Company />
+    <Description>High-performance and Async TCP networking library for .NET</Description>
+    <PackageLicenseUrl>https://github.com/moien007/TcpFramework/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/moien007/TcpFramework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/moien007/TcpFramework</RepositoryUrl>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.3'">
