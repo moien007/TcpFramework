@@ -46,14 +46,18 @@ namespace TcpFramework
         /// <summary>
         /// Services Configuration
         /// </summary>
-        public TcpServiceConfiguration Configuration { get; }
+        public TcpServiceConfiguration Configuration { get; protected set; }
 
-        protected TcpService(TcpServiceConfiguration configuration)
+        protected TcpService()
         {
-            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             Started = false;
             Disposed = false;
             m_SvcSockets = null;
+        }
+
+        protected TcpService(TcpServiceConfiguration configuration) : this()
+        {
+            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         /// <summary>
@@ -131,6 +135,15 @@ namespace TcpFramework
         }
 
         protected abstract void HandleClientSocket(TcpServiceEndPoint serviceEndPoint, Socket clientSocket, IPEndPoint remoteEndPoint);
+
+        protected void InitializeAndHandleClientHelper(TcpServiceClientBase client, TcpServiceEndPoint serviceEndPoint, Socket clientSocket, IPEndPoint remoteEndPoint)
+        {
+            client.ClientService = this;
+            client.ClientSocket = clientSocket;
+            client.ClientEndPoint = remoteEndPoint;
+            ThreadPool.QueueUserWorkItem(o => (o as TcpServiceClientBase).OnConnect(), client);
+        }
+
 
         protected virtual Socket CreateSocket(TcpServiceEndPoint serviceEndPoint)
         {
@@ -246,7 +259,6 @@ namespace TcpFramework
             if (!svcSocket.Socket.AcceptAsync(e))
                 ProcessSocketAcceptEvent(e);
         }
-
 
         static Pool<T> CreatePool<T>(TcpServicePoolType poolType, int count, Func<T> activator)
         {

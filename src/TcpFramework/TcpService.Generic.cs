@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace TcpFramework
 {
@@ -14,13 +12,10 @@ namespace TcpFramework
 
         }
 
+
         protected override void HandleClientSocket(TcpServiceEndPoint serviceEndPoint, Socket clientSocket, IPEndPoint remoteEndPoint)
         {
-            var cli = new TClient();
-            cli.ClientService = this;
-            cli.ClientSocket = clientSocket;
-            cli.ClientEndPoint = remoteEndPoint;
-            ThreadPool.QueueUserWorkItem(o => (o as TClient).OnConnect(), cli);
+            InitializeAndHandleClientHelper(new TClient(), serviceEndPoint, clientSocket, remoteEndPoint);
         }
 
         /// <summary>
