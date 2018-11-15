@@ -23,5 +23,5 @@ Visit wiki to read [documentation and getting started](https://github.com/moien0
 Available on NuGet at https://www.nuget.org/packages/TcpFramework
 
 ## TODO
-- Add documentation
-- Comment code lines
+- Add [more] documentation
+- Comment the code lines
