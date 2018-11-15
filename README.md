@@ -1,7 +1,8 @@
 # TcpFramework
 High-performance and Async TCP networking library for .NET 
 
-Some notable features :
+## Features 
+Some notable features:
 * Built at top of 
 [SocketAsyncEventArgs](https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.socketasynceventargs)
 * Lightweight ( no dependencies on libararies like [libuv](https://github.com/libuv/libuv) or [libev](https://github.com/enki/libev) )
@@ -16,7 +17,7 @@ Some notable features :
 - .NET Core 2.1 (recommended)
 
 ## Documentation (Getting started)
-Visit wiki to read [documentation and getting started](https://github.com/moien007/TcpFramework/wiki/Getting-started)
+Visit wiki to read [documentation and getting started](https://github.com/moien007/TcpFramework/wiki/getting-started)
 
 ## NuGet
 Available on NuGet at https://www.nuget.org/packages/TcpFramework
