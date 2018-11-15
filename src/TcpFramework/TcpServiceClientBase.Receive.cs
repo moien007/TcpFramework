@@ -124,6 +124,12 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Starts the receiver
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the receiver is shutdowned
+        /// </exception>
         protected void StartReceive()
         {
             if (TryStartReceive())
@@ -132,12 +138,19 @@ namespace TcpFramework
             throw new InvalidOperationException("Failed to start the receiver");
         }
 
+        /// <summary>
+        /// Starts the receiver
+        /// </summary>
+        /// <returns>returns false if the receiver shutdowned, else returns true</returns>
         protected bool TryStartReceive()
         {
             lock (SyncObject)
             {
-                if (HasStateFlags(StateFlags.ReceiverStartedOrShutdown))
+                if (HasStateFlags(StateFlags.ReceiveShutdown))
                     return false;
+
+                if (HasStateFlags(StateFlags.ReceiverStarted))
+                    return true;
 
                 SetStateFlags(StateFlags.ReceiverStartedOrReceiving);
             }
@@ -146,6 +159,12 @@ namespace TcpFramework
             return true;
         }
 
+        /// <summary>
+        /// Tells the receiver to don't continue reciving
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the receiver is receiving
+        /// </exception>
         protected void StopReceive()
         {
             if (TryStopReceive())
@@ -154,6 +173,10 @@ namespace TcpFramework
             throw new InvalidOperationException("Failed to stop the receiver");
         }
 
+        /// <summary>
+        /// Tells the receiver to don't continue receiving
+        /// </summary>
+        /// <returns>Returns false if the receiver is receiving, else returns true</returns>
         protected bool TryStopReceive()
         {
             lock (SyncObject)

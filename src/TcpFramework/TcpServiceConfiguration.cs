@@ -12,12 +12,23 @@ namespace TcpFramework
         private int m_SendBufferPoolCount;
         private int m_SendEventArgsPoolCount;
         private int m_TCSPoolCount;
-        private TcpBufferPoolType m_SendBufferPoolType;
-        private TcpBufferPoolType m_ReceiveBufferPoolType;
+        private TcpServicePoolType m_SendBufferPoolType;
+        private TcpServicePoolType m_ReceiveBufferPoolType;
+        private TcpServicePoolType m_SendEventArgsPoolType;
 
+        /// <summary>
+        /// Currently added <see cref="TcpServiceEndPoint"/>'s
+        /// </summary>
         public IReadOnlyList<TcpServiceEndPoint> EndPoints => m_EndPoints;
+
+        /// <summary>
+        /// Indicates <see cref="TcpServiceConfiguration"/> marked as readonly
+        /// </summary>
         public bool IsReadonly { get; private set; }
 
+        /// <summary>
+        /// Size of buffers of receive buffer pool
+        /// </summary>
         public int ReceiveBufferSize
         {
             get => m_ReceiveBufferSize;
@@ -29,6 +40,10 @@ namespace TcpFramework
                 m_ReceiveBufferSize = value;
             }
         }
+
+        /// <summary>
+        /// Size of buffers of send buffer pool
+        /// </summary>
         public int SendBufferSize
         {
             get => m_SendBufferSize;
@@ -42,6 +57,9 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Pool count of receive buffers 
+        /// </summary>
         public int ReceiveBufferPoolCount
         {
             get => m_ReceiveBufferPoolCount;
@@ -54,6 +72,10 @@ namespace TcpFramework
                 m_ReceiveBufferPoolCount = value;
             }
         }
+
+        /// <summary>
+        /// Pool count of send buffers
+        /// </summary>
         public int SendBufferPoolCount
         {
             get => m_SendBufferPoolCount;
@@ -67,6 +89,10 @@ namespace TcpFramework
             }
         }
 
+
+        /// <summary>
+        /// Pool count of [bufferless] <see cref="System.Net.Sockets.SocketAsyncEventArgs"/> for send purpose
+        /// </summary>
         public int SendEventArgsPoolCount
         {
             get => m_SendEventArgsPoolCount;
@@ -80,6 +106,9 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Type of pool that contains <see cref="System.Threading.Tasks.TaskCompletionSource{TResult}"/> pool
+        /// </summary>
         public int TaskCompletionSourcePoolCount
         {
             get => m_TCSPoolCount;
@@ -93,7 +122,10 @@ namespace TcpFramework
             }
         }
 
-        public TcpBufferPoolType SendBufferPoolType
+        /// <summary>
+        /// Type of pool that contains send buffers
+        /// </summary>
+        public TcpServicePoolType SendBufferPoolType
         {
             get => m_SendBufferPoolType;
             set
@@ -103,7 +135,10 @@ namespace TcpFramework
             }
         }
 
-        public TcpBufferPoolType ReceiveBufferPoolType
+        /// <summary>
+        /// Type of pool that contains receive buffers
+        /// </summary>
+        public TcpServicePoolType ReceiveBufferPoolType
         {
             get => m_ReceiveBufferPoolType;
             set
@@ -113,6 +148,22 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Type of pool that contains [bufferless] <see cref="System.Net.Sockets.SocketAsyncEventArgs"/> for send purpose
+        /// </summary>
+        public TcpServicePoolType SendEventArgsPoolType
+        {
+            get => m_SendEventArgsPoolType;
+            set
+            {
+                CheckReadonly();
+                m_SendEventArgsPoolType = value;
+            }
+        }
+
+        /// <summary>
+        /// Constructs <see cref="TcpServiceConfiguration"/> with defualt values
+        /// </summary>
         public TcpServiceConfiguration()
         {
             IsReadonly = false;
@@ -128,20 +179,32 @@ namespace TcpFramework
 
             m_TCSPoolCount = 10;
 
-            ReceiveBufferPoolType = TcpBufferPoolType.DemandCache;
-            SendBufferPoolType = TcpBufferPoolType.DemandCache;
+            ReceiveBufferPoolType = TcpServicePoolType.DemandCache;
+            SendBufferPoolType = TcpServicePoolType.DemandCache;
         }
 
+        /// <summary>
+        /// Adds <see cref="TcpServiceEndPoint"/> to service EndPoints list
+        /// </summary>
+        /// <param name="endPoint"></param>
         public void AddEndPoint(TcpServiceEndPoint endPoint)
         {
             m_EndPoints.Add(endPoint ?? throw new ArgumentNullException(nameof(endPoint)));
         }
 
+        /// <summary>
+        /// Removes <see cref="TcpServiceEndPoint"/> from service EndPoints list 
+        /// </summary>
+        /// <param name="endPoint"></param>
+        /// <returns></returns>
         public bool RemoveEndPoint(TcpServiceEndPoint endPoint)
         {
             return m_EndPoints.Remove(endPoint);
         }
 
+        /// <summary>
+        /// Marks configuration as readonly
+        /// </summary>
         public void MakeReadonly()
         {
             IsReadonly = true;

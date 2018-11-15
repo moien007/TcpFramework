@@ -3,6 +3,9 @@ using System.Net;
 
 namespace TcpFramework
 {
+    /// <summary>
+    /// Contains an <see cref="System.Net.IPEndPoint"/> and Backlog of <see cref="TcpService"/>  
+    /// </summary>
     public class TcpServiceEndPoint
     {
         public IPEndPoint EndPoint { get; }

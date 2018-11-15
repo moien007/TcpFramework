@@ -7,7 +7,16 @@ namespace TcpFramework
 {
     public abstract partial class TcpServiceClientBase
     {
+        /// <summary>
+        /// Sends buffer synchronously (blocking) with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, returns else true</returns>
         protected bool Send(byte[] buffer, int offset, int count) => Send(buffer, offset, count, SocketFlags.None);
+
+        /// <summary>
+        /// Sends buffer synchronously (blocking)
+        /// </summary>
+        /// <returns>Returns false if send fails, returns else true</returns>
         protected bool Send(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             if (SendShutdowned())
@@ -39,7 +48,16 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Sends copy of buffer synchronously (blocking) with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected bool SendCopy(byte[] buffer, int offset, int count) => Send(buffer, offset, count, SocketFlags.None);
+
+        /// <summary>
+        /// Sends copy of buffer synchronously (blocking)
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected bool SendCopy(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             if (SendShutdowned())
@@ -78,7 +96,16 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Sends copy of buffer non-blocking with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true with number of sent bytes</returns>
         protected (bool, int) SendNonBlocking(byte[] buffer, int offset, int count) => SendNonBlocking(buffer, offset, count, SocketFlags.None);
+
+        /// <summary>
+        /// Sends copy of buffer non-blocking
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true with number of sent bytes</returns>
         protected (bool, int) SendNonBlocking(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             if (SendShutdowned())
@@ -116,6 +143,10 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Begins an asynchronously send operation using <see cref="SocketAsyncEventArgs"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected async ValueTask<bool> SendAsync(SocketAsyncEventArgs eventArgs)
         {
             if (SendShutdowned())
@@ -135,11 +166,20 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Sends buffer asynchronously with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected ValueTask<bool> SendAsync(byte[] buffer, int offset, int count)
         {
             return SendAsync(buffer, offset, count, SocketFlags.None);
-        } 
+        }
 
+
+        /// <summary>
+        /// Sends buffer asynchronously
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected async ValueTask<bool> SendAsync(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             if (SendShutdowned())
@@ -148,11 +188,19 @@ namespace TcpFramework
             return await SendAsyncCore(buffer, offset, count, socketFlags);
         }
 
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries asynchronously (with <see cref="SocketFlags.None"/>)
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected ValueTask<bool> SendNonBlockingAsync(byte[] buffer, int offset, int count)
         {
             return SendNonBlockingAsync(buffer, offset, count, SocketFlags.None);
         }
 
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries asynchronously
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected async ValueTask<bool> SendNonBlockingAsync(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             if (SendShutdowned())
@@ -190,11 +238,19 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries using copy of buffer asynchronously (with <see cref="SocketFlags.None"/>)
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected ValueTask<bool> SendCopyNonBlockingAsync(byte[] buffer, int offset, int count)
         {
             return SendCopyNonBlockingAsync(buffer, offset, count, SocketFlags.None);
         }
 
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries using copy of buffer asynchronously
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected async ValueTask<bool> SendCopyNonBlockingAsync(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             if (SendShutdowned())

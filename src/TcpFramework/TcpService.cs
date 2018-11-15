@@ -7,6 +7,9 @@ using TcpFramework.Pooling;
 
 namespace TcpFramework
 {
+    /// <summary>
+    /// Implements base class for TCP service that listens and handle incoming connections
+    /// </summary>
     public abstract class TcpService 
     {
         private class ServiceSocket
@@ -29,10 +32,21 @@ namespace TcpFramework
         internal Pool<SocketAsyncEventArgs> SendAsyncEventArgsPool { get; private set; }
         internal Pool<SocketAsyncEventArgs> ReceiveAsyncEventArgsPool { get; private set; }
         internal Pool<TaskCompletionSource<bool>> TaskCompletionSourcePool { get; private set; }
+
+        /// <summary>
+        /// Indicates the service has started
+        /// </summary>
         public bool Started { get; private set; }
+
+        /// <summary>
+        /// Indicates the service has disposed
+        /// </summary>
         public bool Disposed { get; private set; }
 
-        protected internal TcpServiceConfiguration Configuration { get; }
+        /// <summary>
+        /// Services Configuration
+        /// </summary>
+        public TcpServiceConfiguration Configuration { get; }
 
         protected TcpService(TcpServiceConfiguration configuration)
         {
@@ -42,6 +56,9 @@ namespace TcpFramework
             m_SvcSockets = null;
         }
 
+        /// <summary>
+        /// Initialize the service and starts the listeners and uses current thread to accept incoming connections
+        /// </summary>
         public void Start()
         {
             Init();
@@ -53,21 +70,7 @@ namespace TcpFramework
             {
                 var svcSocket = m_SvcSockets[0];
                 svcSocket.Socket.Listen(svcSocket.ServiceEndPoint.Backlog);
-
-                while (true)
-                {
-                    try
-                    {
-                        var client = svcSocket.Socket.Accept();
-                        HandleClientSocket(svcSocket.ServiceEndPoint, client, client.RemoteEndPoint as IPEndPoint);
-                    }
-                    catch (SocketException)
-                    {
-                        Dispose();
-                        break;
-                    }
-                }
-
+                AcceptLoop(svcSocket);
                 return;
             }
 
@@ -97,6 +100,9 @@ namespace TcpFramework
             }
         }
 
+        /// <summary>
+        /// Initialize the service, and starts listener and accepts connections asynchronously
+        /// </summary>
         public void StartAsync()
         {
             Init();
@@ -152,24 +158,46 @@ namespace TcpFramework
                 m_SvcSockets[i] = new ServiceSocket(socket, endPoint);
             }
 
-            BufferlessSendAsyncEventArgsPool = new CachedPool<SocketAsyncEventArgs>(
-                Configuration.SendEventArgsPoolCount,
-                () => new SocketAsyncEventArgs(),
-                true);
-
-            SendAsyncEventArgsPool = CreateSocketEventArgsPool(Configuration.SendBufferPoolCount,
-                                                                 Configuration.SendBufferSize,
-                                                                 Configuration.SendBufferPoolType);
-
-            ReceiveAsyncEventArgsPool = CreateSocketEventArgsPool(Configuration.ReceiveBufferPoolCount,
-                                                                Configuration.ReceiveBufferSize,
-                                                                Configuration.ReceiveBufferPoolType);
-
-            TaskCompletionSourcePool = new CachedPool<TaskCompletionSource<bool>>(
+            TaskCompletionSourcePool = CreatePool(
+                TcpServicePoolType.Cache,
                 Configuration.TaskCompletionSourcePoolCount,
-                () => new TaskCompletionSource<bool>(),
-                true);
+                () => new TaskCompletionSource<bool>());
 
+            BufferlessSendAsyncEventArgsPool = CreatePool(
+                Configuration.SendEventArgsPoolType, 
+                Configuration.SendEventArgsPoolCount, 
+                () => new SocketAsyncEventArgs());
+
+            SendAsyncEventArgsPool = CreateSAEABufferPool(
+                Configuration.SendBufferPoolCount,
+                Configuration.SendBufferSize,
+                Configuration.SendBufferPoolType);
+
+            ReceiveAsyncEventArgsPool = CreateSAEABufferPool(
+                Configuration.ReceiveBufferPoolCount,
+                Configuration.ReceiveBufferSize,
+                Configuration.ReceiveBufferPoolType);
+
+        }
+
+        private void AcceptLoop(ServiceSocket serviceSocket)
+        {
+            var socket = serviceSocket.Socket;
+            var endPoint = serviceSocket.ServiceEndPoint;
+
+            while (true)
+            {
+                try
+                {
+                    var client = socket.Accept();
+                    HandleClientSocket(endPoint, client, client.RemoteEndPoint as IPEndPoint);
+                }
+                catch (SocketException)
+                {
+                    Dispose();
+                    break;
+                }
+            }
         }
 
         private void Dispose(bool disposing)
@@ -220,20 +248,26 @@ namespace TcpFramework
         }
 
 
-        static Pool<SocketAsyncEventArgs> CreateSocketEventArgsPool(int count, int bufferSize, TcpBufferPoolType poolType)
+        static Pool<T> CreatePool<T>(TcpServicePoolType poolType, int count, Func<T> activator)
         {
-            if (poolType == TcpBufferPoolType.Null)
+            switch (poolType)
             {
-                return new NullPool<SocketAsyncEventArgs>(() =>
-                {
-                    var eventArgs = new SocketAsyncEventArgs();
-                    var buffer = new byte[bufferSize];
-                    eventArgs.SetBuffer(buffer, 0, buffer.Length);
-                    return eventArgs;
-                });
-            }
+                case TcpServicePoolType.Cache:
+                case TcpServicePoolType.DemandCache:
+                    return new CachedPool<T>(count, activator, TcpServicePoolType.DemandCache == poolType);
 
-            if (poolType == TcpBufferPoolType.Cyclic)
+                case TcpServicePoolType.Cyclic:
+                case TcpServicePoolType.DemandCyclic:
+                    return new CyclicPool<T>(count, activator, TcpServicePoolType.DemandCyclic == poolType);
+
+                default:
+                    throw new NotImplementedException(poolType.ToString());
+            }
+        }
+
+        static Pool<SocketAsyncEventArgs> CreateSAEABufferPool(int count, int bufferSize, TcpServicePoolType poolType)
+        {
+            if (poolType == TcpServicePoolType.Cyclic)
             {
                 var buffer = new byte[bufferSize * count];
                 var offset = 0;
@@ -247,7 +281,7 @@ namespace TcpFramework
                 }, false);
             }
 
-            if (poolType == TcpBufferPoolType.Cache)
+            if (poolType == TcpServicePoolType.Cache)
             {
                 var buffer = new byte[bufferSize * count];
                 var offset = 0;
@@ -268,7 +302,7 @@ namespace TcpFramework
                 }, false);
             }
 
-            if (poolType == TcpBufferPoolType.DemandCyclic)
+            if (poolType == TcpServicePoolType.DemandCyclic)
             {
                 return new CyclicPool<SocketAsyncEventArgs>(count, () =>
                 {
@@ -279,7 +313,7 @@ namespace TcpFramework
                 }, true);
             }
 
-            if (poolType == TcpBufferPoolType.DemandCache)
+            if (poolType == TcpServicePoolType.DemandCache)
             {
                 return new CyclicPool<SocketAsyncEventArgs>(count, () =>
                 {
