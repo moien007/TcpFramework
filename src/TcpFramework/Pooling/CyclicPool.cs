@@ -47,26 +47,20 @@ namespace TcpFramework.Pooling
                 return (false, default(T));
             }
 
-            try
+
+            lock (SyncObject)
             {
-                lock (SyncObject)
+                if (m_Stack == null)
                 {
-                    if (m_Stack == null)
-                    {
-                        return (false, default(T));
-                    }
-
-                    if (m_Stack.Count == 0)
-                    {
-                        return (true, m_Activator());
-                    }
-
-                    return (true, m_Stack.Pop());
+                    return (false, default(T));
                 }
-            }
-            finally
-            {
-                m_Semaphore.Release();
+
+                if (m_Stack.Count == 0)
+                {
+                    return (true, m_Activator());
+                }
+
+                return (true, m_Stack.Pop());
             }
         }
 
@@ -85,6 +79,7 @@ namespace TcpFramework.Pooling
                 }
 
                 m_Stack.Push(item);
+                m_Semaphore.Release();
             }
         }
 
