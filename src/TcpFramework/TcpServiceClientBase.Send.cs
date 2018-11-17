@@ -10,13 +10,13 @@ namespace TcpFramework
         /// <summary>
         /// Sends buffer synchronously (blocking) with <see cref="SocketFlags.None"/>
         /// </summary>
-        /// <returns>Returns false if send fails, returns else true</returns>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected bool Send(byte[] buffer, int offset, int count) => Send(buffer, offset, count, SocketFlags.None);
 
         /// <summary>
         /// Sends buffer synchronously (blocking)
         /// </summary>
-        /// <returns>Returns false if send fails, returns else true</returns>
+        /// <returns>Returns false if send fails, else returns true</returns>
         protected bool Send(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             if (SendShutdowned())
