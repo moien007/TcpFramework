@@ -18,11 +18,7 @@ namespace TcpFramework
 
         protected bool TrySetExclusiveReceiveEvent(SocketAsyncEventArgs eventArgs)
         {
-            if (eventArgs == null)
-                throw new ArgumentNullException(nameof(eventArgs));
-
-            if (eventArgs.Buffer == null)
-                throw new ArgumentNullException(nameof(eventArgs.Buffer));
+            CheckReceiveEventArgs(eventArgs);
 
             lock (SyncObject)
             {
@@ -39,11 +35,7 @@ namespace TcpFramework
 
         protected bool TrySetExclusiveReceiveEvent(SocketAsyncEventArgs eventArgs, out SocketAsyncEventArgs oldEventArgs)
         {
-            if (eventArgs == null)
-                throw new ArgumentNullException(nameof(eventArgs));
-
-            if (eventArgs.Buffer == null)
-                throw new ArgumentNullException(nameof(eventArgs.Buffer));
+            CheckReceiveEventArgs(eventArgs);
 
             lock (SyncObject)
             {
@@ -366,9 +358,13 @@ namespace TcpFramework
                 UnsetStateFlags(StateFlags.IsReceiving);
             }
 
-            await OnReceive(m_CurrentReceiveEvent.Buffer,
-                            m_CurrentReceiveEvent.Offset,
-                            m_CurrentReceiveEvent.BytesTransferred);
+#if NETCOREAPP2_1
+            await OnReceive(m_CurrentReceiveEvent.MemoryBuffer.Slice(m_CurrentReceiveEvent.BytesTransferred));
+#else
+            await OnReceive(new Memory<byte>(m_CurrentReceiveEvent.Buffer,
+                                             m_CurrentReceiveEvent.Offset,
+                                             m_CurrentReceiveEvent.BytesTransferred));
+#endif
 
             lock (SyncObject)
             {
@@ -426,18 +422,27 @@ namespace TcpFramework
             }
         }
 
-        private ValueTask<bool> ReceiveSyncUsingCurrentReceiveEvent() =>
-                                ReceiveSync(m_CurrentReceiveEvent.Buffer,
-                                            m_CurrentReceiveEvent.Offset,
-                                            m_CurrentReceiveEvent.Count);
-        
+        private ValueTask<bool> ReceiveSyncUsingCurrentReceiveEvent()
+        {
+#if NETCOREAPP2_1
+            return ReceiveSync(m_CurrentReceiveEvent.MemoryBuffer);
+#else
+            return ReceiveSync(m_CurrentReceiveEvent.Buffer,
+                               m_CurrentReceiveEvent.Offset,
+                               m_CurrentReceiveEvent.Count);
+#endif
+        }
 
         private async ValueTask<bool> ReceiveSyncUsingArrayPool(int minimumBufferLength)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(minimumBufferLength);
             try
             {
+#if NETCOREAPP2_1
+                return await ReceiveSync(buffer);
+#else
                 return await ReceiveSync(buffer, 0, buffer.Length);
+#endif
             }
             finally
             {
@@ -445,12 +450,21 @@ namespace TcpFramework
             }
         }
 
+#if NETCOREAPP2_1
+        private async ValueTask<bool> ReceiveSync(Memory<byte> memory)
+
+#else
         private async ValueTask<bool> ReceiveSync(byte[] buffer, int offset, int count)
+#endif
         {
             int bytesRead;
             try
             {
+#if NETCOREAPP2_1
+                bytesRead = ClientSocket.Receive(memory.Span);
+#else
                 bytesRead = ClientSocket.Receive(buffer, offset, count, SocketFlags.None);
+#endif
             }
             catch (SocketException ex)
             {
@@ -477,7 +491,11 @@ namespace TcpFramework
                 UnsetStateFlags(StateFlags.IsReceiving);
             }
 
-            await OnReceive(buffer, offset, bytesRead);
+#if NETCOREAPP2_1
+            await OnReceive(memory.Slice(bytesRead));
+#else
+            await OnReceive(new Memory<byte>(buffer, offset, bytesRead));
+#endif
 
             lock (SyncObject)
             {
@@ -527,6 +545,20 @@ namespace TcpFramework
             }
 
             await OnReceiveShutdown();
+        }
+
+        private void CheckReceiveEventArgs(SocketAsyncEventArgs eventArgs)
+        {
+            if (eventArgs == null)
+                throw new ArgumentNullException(nameof(eventArgs));
+
+#if NETCOREAPP2_1
+            if (eventArgs.MemoryBuffer.Length == 0)
+                throw new ArgumentNullException(nameof(eventArgs.Buffer) + " or " + nameof(eventArgs.MemoryBuffer) + " is not set");
+#else
+            if (eventArgs.Buffer == null)
+               throw new ArgumentNullException(nameof(eventArgs.Buffer));
+#endif
         }
     }
 }

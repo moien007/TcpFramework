@@ -26,9 +26,6 @@ namespace TcpFramework
             {
                 int sent = ClientSocket.Send(buffer, offset, count, socketFlags);
 
-                if (sent == count)
-                    return true;
-
                 while (sent < count)
                 {
                     sent += ClientSocket.Send(buffer, offset + sent, count - sent, socketFlags);
@@ -48,11 +45,53 @@ namespace TcpFramework
             }
         }
 
+#if NETCOREAPP2_1
+
+        /// <summary>
+        /// Sends buffer synchronously (blocking) with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected bool Send(ReadOnlySpan<byte> span) => Send(span, SocketFlags.None);
+
+        /// <summary>
+        /// Sends buffer synchronously (blocking)
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected bool Send(ReadOnlySpan<byte> span, SocketFlags socketFlags)
+        {
+            if (SendShutdowned())
+                return false;
+
+            try
+            {
+                int sent = ClientSocket.Send(span, socketFlags);
+
+                while (sent < span.Length)
+                {
+                    sent += ClientSocket.Send(span.Slice(sent, span.Length - sent), socketFlags);
+                }
+
+                return true;
+            }
+            catch (SocketException ex)
+            {
+                HandleSendSocketError(ex.SocketErrorCode).GetAwaiter().GetResult();
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                HandleClose().GetAwaiter().GetResult();
+                return false;
+            }
+        }
+
+#endif
+
         /// <summary>
         /// Sends copy of buffer synchronously (blocking) with <see cref="SocketFlags.None"/>
         /// </summary>
         /// <returns>Returns false if send fails, else returns true</returns>
-        protected bool SendCopy(byte[] buffer, int offset, int count) => Send(buffer, offset, count, SocketFlags.None);
+        protected bool SendCopy(byte[] buffer, int offset, int count) => SendCopy(buffer, offset, count, SocketFlags.None);
 
         /// <summary>
         /// Sends copy of buffer synchronously (blocking)
@@ -96,6 +135,55 @@ namespace TcpFramework
             }
         }
 
+#if NETCOREAPP2_1
+
+        /// <summary>
+        /// Sends copy of buffer synchronously (blocking) with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected bool SendCopy(ReadOnlySpan<byte> span) => SendCopy(span, SocketFlags.None);
+
+        /// <summary>
+        /// Sends copy of buffer synchronously (blocking)
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected bool SendCopy(ReadOnlySpan<byte> span, SocketFlags socketFlags)
+        {
+            if (SendShutdowned())
+                return false;
+            
+            var rentedBuffer = ArrayPool<byte>.Shared.Rent(span.Length);
+            span.CopyTo(rentedBuffer);
+
+            try
+            {
+                int sent = ClientSocket.Send(rentedBuffer, 0, span.Length, socketFlags);
+
+                while (sent < span.Length)
+                {
+                    sent += ClientSocket.Send(rentedBuffer, sent, span.Length - sent, socketFlags);
+                }
+
+                return true;
+            }
+            catch (SocketException ex)
+            {
+                HandleSendSocketError(ex.SocketErrorCode).GetAwaiter().GetResult();
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                HandleClose().GetAwaiter().GetResult();
+                return false;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentedBuffer);
+            }
+        }
+
+#endif
+
         /// <summary>
         /// Sends copy of buffer non-blocking with <see cref="SocketFlags.None"/>
         /// </summary>
@@ -115,9 +203,6 @@ namespace TcpFramework
             try
             {
                 sent = ClientSocket.Send(buffer, offset, count, socketFlags);
-
-                if (sent == count)
-                    return (true, sent);
 
                 while (sent < count)
                 {
@@ -142,6 +227,54 @@ namespace TcpFramework
                 return (false, 0);
             }
         }
+
+#if NETCOREAPP2_1
+
+        /// <summary>
+        /// Sends copy of buffer non-blocking with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true with number of sent bytes</returns>
+        protected (bool, int) SendNonBlocking(ReadOnlySpan<byte> span) => SendNonBlocking(span, SocketFlags.None);
+
+        /// <summary>
+        /// Sends copy of buffer non-blocking
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true with number of sent bytes</returns>
+        protected (bool, int) SendNonBlocking(ReadOnlySpan<byte> span, SocketFlags socketFlags)
+        {
+            if (SendShutdowned())
+                return (false, 0);
+
+            int sent = 0;
+            try
+            {
+                sent = ClientSocket.Send(span, socketFlags);
+
+                while (sent < span.Length)
+                {
+                    sent += ClientSocket.Send(span.Slice(sent, span.Length - sent), socketFlags);
+                }
+
+                return (true, sent);
+            }
+            catch (SocketException ex)
+            {
+                if (ex.SocketErrorCode == SocketError.WouldBlock)
+                {
+                    return (true, sent);
+                }
+
+                HandleSendSocketError(ex.SocketErrorCode).GetAwaiter().GetResult();
+                return (false, 0);
+            }
+            catch (ObjectDisposedException)
+            {
+                HandleClose().GetAwaiter().GetResult();
+                return (false, 0);
+            }
+        }
+
+#endif
 
         /// <summary>
         /// Begins an asynchronously send operation using <see cref="SocketAsyncEventArgs"/>
@@ -187,6 +320,32 @@ namespace TcpFramework
 
             return await SendAsyncCore(buffer, offset, count, socketFlags);
         }
+
+#if NETCOREAPP2_1
+
+        /// <summary>
+        /// Sends buffer asynchronously with <see cref="SocketFlags.None"/>
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected ValueTask<bool> SendAsync(Memory<byte> memory)
+        {
+            return SendAsync(memory, SocketFlags.None);
+        }
+
+
+        /// <summary>
+        /// Sends buffer asynchronously
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected async ValueTask<bool> SendAsync(Memory<byte> memory, SocketFlags socketFlags)
+        {
+            if (SendShutdowned())
+                return false;
+
+            return await SendAsyncCore(memory, socketFlags);
+        }
+
+#endif
 
         /// <summary>
         /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries asynchronously (with <see cref="SocketFlags.None"/>)
@@ -238,6 +397,57 @@ namespace TcpFramework
             }
         }
 
+#if NETCOREAPP2_1
+
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries asynchronously (with <see cref="SocketFlags.None"/>)
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected ValueTask<bool> SendNonBlockingAsync(Memory<byte> memory)
+        {
+            return SendNonBlockingAsync(memory, SocketFlags.None);
+        }
+
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries asynchronously
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected async ValueTask<bool> SendNonBlockingAsync(Memory<byte> memory, SocketFlags socketFlags)
+        {
+            if (SendShutdowned())
+                return false;
+
+            int sent = 0;
+            try
+            {
+                sent = ClientSocket.Send(memory.Span, socketFlags);
+
+                while (sent < memory.Length)
+                {
+                    sent += ClientSocket.Send(memory.Slice(sent, memory.Length - sent).Span, socketFlags);
+                }
+
+                return true;
+            }
+            catch (SocketException ex)
+            {
+                if (ex.SocketErrorCode == SocketError.WouldBlock)
+                {
+                    return await SendAsyncCore(memory.Slice(sent, memory.Length - sent), socketFlags);
+                }
+
+                await HandleSendSocketError(ex.SocketErrorCode);
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                await HandleClose();
+                return false;
+            }
+        }
+
+#endif
+
         /// <summary>
         /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries using copy of buffer asynchronously (with <see cref="SocketFlags.None"/>)
         /// </summary>
@@ -260,9 +470,6 @@ namespace TcpFramework
             try
             {
                 sent = ClientSocket.Send(buffer, offset, count, socketFlags);
-
-                if (sent == count)
-                    return true;
 
                 while (sent < count)
                 {
@@ -287,6 +494,55 @@ namespace TcpFramework
                 return false;
             }
         }
+
+#if NETCOREAPP2_1
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries using copy of buffer asynchronously (with <see cref="SocketFlags.None"/>)
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected ValueTask<bool> SendCopyNonBlockingAsync(Memory<byte> memory)
+        {
+            return SendCopyNonBlockingAsync(memory, SocketFlags.None);
+        }
+
+        /// <summary>
+        /// Sends buffer synchronously, if <see cref="SocketError.WouldBlock"/> occurs, retries using copy of buffer asynchronously
+        /// </summary>
+        /// <returns>Returns false if send fails, else returns true</returns>
+        protected async ValueTask<bool> SendCopyNonBlockingAsync(Memory<byte> memory, SocketFlags socketFlags)
+        {
+            if (SendShutdowned())
+                return false;
+
+            int sent = 0;
+            try
+            {
+                sent = ClientSocket.Send(memory.Span, socketFlags);
+                
+                while (sent < memory.Length)
+                {
+                    sent += ClientSocket.Send(memory.Slice(sent, memory.Length - sent).Span, socketFlags);
+                }
+
+                return true;
+            }
+            catch (SocketException ex)
+            {
+                if (ex.SocketErrorCode == SocketError.WouldBlock)
+                {
+                    return await SendCopyAsyncCore(memory.Slice(sent, memory.Length - sent), socketFlags);
+                }
+
+                await HandleSendSocketError(ex.SocketErrorCode);
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                await HandleClose();
+                return false;
+            }
+        }
+#endif
 
         private async ValueTask<bool> SendCopyAsyncCore(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
@@ -331,6 +587,52 @@ namespace TcpFramework
             }
         }
 
+
+#if NETCOREAPP2_1
+        private async ValueTask<bool> SendCopyAsyncCore(Memory<byte> memory, SocketFlags socketFlags)
+        {
+            if (ClientService.Configuration.SendBufferSize < memory.Length)
+            {
+                var rentedBuffer = ArrayPool<byte>.Shared.Rent(memory.Length);
+                memory.CopyTo(rentedBuffer);
+
+                try
+                {
+                    return await SendAsyncCore(rentedBuffer, 0, memory.Length, socketFlags);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(rentedBuffer);
+                }
+            }
+
+            var (taken, eventArgs) = await ClientService.SendAsyncEventArgsPool.TryTakeAsync();
+            if (!taken)
+            {
+                await HandleClose();
+                return false;
+            }
+
+            var originalCount = eventArgs.Count;
+            eventArgs.Completed += AsyncSend_Completed;
+            eventArgs.SocketFlags = socketFlags;
+            eventArgs.SetBuffer(eventArgs.Offset, memory.Length);
+
+            memory.CopyTo(new Memory<byte>(eventArgs.Buffer, eventArgs.Offset, memory.Length));
+
+            try
+            {
+                return await SendAsyncCore(eventArgs);
+            }
+            finally
+            {
+                eventArgs.Completed -= AsyncSend_Completed;
+                eventArgs.SetBuffer(eventArgs.Offset, originalCount);
+                ClientService.SendAsyncEventArgsPool.Return(eventArgs);
+            }
+        }
+#endif
+
         private async ValueTask<bool> SendAsyncCore(byte[] buffer, int offset, int count, SocketFlags socketFlags)
         {
             var (taken, eventArgs) = await ClientService.BufferlessSendAsyncEventArgsPool.TryTakeAsync();
@@ -355,6 +657,33 @@ namespace TcpFramework
                 ClientService.BufferlessSendAsyncEventArgsPool.Return(eventArgs);
             }
         }
+
+#if NETCOREAPP2_1
+        private async ValueTask<bool> SendAsyncCore(Memory<byte> memory, SocketFlags socketFlags)
+        {
+            var (taken, eventArgs) = await ClientService.BufferlessSendAsyncEventArgsPool.TryTakeAsync();
+            if (!taken)
+            {
+                await HandleClose();
+                return false;
+            }
+
+            eventArgs.Completed += AsyncSend_Completed;
+            eventArgs.SetBuffer(memory);
+            eventArgs.SocketFlags = socketFlags;
+
+            try
+            {
+                return await SendAsyncCore(eventArgs);
+            }
+            finally
+            {
+                eventArgs.Completed -= AsyncSend_Completed;
+                eventArgs.SetBuffer(null, 0, 0);
+                ClientService.BufferlessSendAsyncEventArgsPool.Return(eventArgs);
+            }
+        }
+#endif
 
         private async ValueTask<bool> SendAsyncCore(SocketAsyncEventArgs e)
         {
@@ -444,7 +773,7 @@ namespace TcpFramework
 
                 SetStateFlags(StateFlags.SendShutdown);
             }
-
+            
             await OnSendShutdown();
         }
     }

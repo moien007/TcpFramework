@@ -25,9 +25,9 @@ namespace TestServer
             StartReceive();
         }
 
-        protected override ValueTask OnReceive(byte[] buffer, int offset, int count)
+        protected override ValueTask OnReceive(Memory<byte> memory)
         {
-            Console.WriteLine("Received {0} bytes", count);
+            Console.WriteLine("Received {0} bytes", memory.Length);
             return new ValueTask();
         }
 

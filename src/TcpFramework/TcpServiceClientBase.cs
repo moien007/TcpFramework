@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
+
 namespace TcpFramework
 {
     public abstract partial class TcpServiceClientBase
@@ -53,10 +54,10 @@ namespace TcpFramework
         /// <summary>
         /// Called when data receives
         /// </summary>
-        protected abstract ValueTask OnReceive(byte[] buffer, int offset, int count);
+        protected abstract ValueTask OnReceive(Memory<byte> segment);
 
         /// <summary>
-        /// Called [by default] when socket error occurs or remote side closes connections
+        /// Called [by default] when socket error occurs or remote side closes the connection
         /// </summary>
         /// <returns></returns>
         protected abstract ValueTask OnClose();
