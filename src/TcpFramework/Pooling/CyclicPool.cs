@@ -38,14 +38,8 @@ namespace TcpFramework.Pooling
 
         public override async ValueTask<(bool, T)> TryTakeAsync()
         {
-            try
-            {
-                await m_Semaphore.WaitOneAsync();
-            }
-            catch (TaskCanceledException)
-            {
+            if (!await m_Semaphore.WaitOneAsync())
                 return (false, default(T));
-            }
 
 
             lock (SyncObject)
