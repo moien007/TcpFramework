@@ -463,7 +463,7 @@ namespace TcpFramework
 #if NETCOREAPP2_1
                 ClientSocket.Receive(memory.Span);
 #else
-                ClientSocket.Receive(buffer, offset, count, SocketFlags.None);
+                ClientSocket.Receive(buffer, offset, count);
 #endif
             }
             catch (SocketException ex)

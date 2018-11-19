@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using TcpFramework.Common;
+using TcpFramework.Threading;
 
 namespace TcpFramework.Pooling
 {

@@ -1,22 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace TcpFramework.Common
+namespace TcpFramework.Threading
 {
     internal class AsyncSemaphore : IDisposable
     {
-        private static readonly Task CanceledTask;
-
-        static AsyncSemaphore()
-        {
-            var tcs = new TaskCompletionSource<bool>();
-            tcs.SetCanceled(); 
-            CanceledTask = tcs.Task;
-        }
-
         private readonly object SyncObject = new object();
 
         private Queue<TaskCompletionSource<bool>> m_CompletionSources;
@@ -29,20 +19,22 @@ namespace TcpFramework.Common
             m_CompletionSources = new Queue<TaskCompletionSource<bool>>(16);
         }
 
-        public ValueTask WaitOneAsync()
+        public async ValueTask<bool> WaitOneAsync()
         {
+            TaskCompletionSource<bool> completionSource;
+
             lock (SyncObject)
             {
                 if (m_CompletionSources == null)
-                    return new ValueTask(CanceledTask);
+                    return false;
 
                 if (m_Count > 0)
                 {
                     m_Count--;
-                    return new ValueTask();
+                    return true;
                 }
 
-                var completionSource =
+                completionSource =
 #if NET45
                 new TaskCompletionSource<bool>();
 #else
@@ -50,8 +42,9 @@ namespace TcpFramework.Common
 #endif
 
                 m_CompletionSources.Enqueue(completionSource);
-                return new ValueTask(completionSource.Task);
             }
+
+            return await completionSource.Task;
         }
 
         public void Release()

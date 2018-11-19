@@ -109,9 +109,6 @@ namespace TcpFramework
             {
                 int sent = ClientSocket.Send(rentedBuffer, 0, count, socketFlags);
 
-                if (sent == count)
-                    return true;
-
                 while (sent < count)
                 {
                     sent += ClientSocket.Send(rentedBuffer, sent, count - sent, socketFlags);
@@ -369,9 +366,6 @@ namespace TcpFramework
             try
             {
                 sent = ClientSocket.Send(buffer, offset, count, socketFlags);
-
-                if (sent == count)
-                    return true;
 
                 while (sent < count)
                 {
