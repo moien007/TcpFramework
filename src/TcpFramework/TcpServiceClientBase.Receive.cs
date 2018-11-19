@@ -452,7 +452,6 @@ namespace TcpFramework
 
 #if NETCOREAPP2_1
         private async ValueTask<bool> ReceiveSync(Memory<byte> memory)
-
 #else
         private async ValueTask<bool> ReceiveSync(byte[] buffer, int offset, int count)
 #endif
@@ -460,10 +459,11 @@ namespace TcpFramework
             int bytesRead;
             try
             {
+                bytesRead =
 #if NETCOREAPP2_1
-                bytesRead = ClientSocket.Receive(memory.Span);
+                ClientSocket.Receive(memory.Span);
 #else
-                bytesRead = ClientSocket.Receive(buffer, offset, count, SocketFlags.None);
+                ClientSocket.Receive(buffer, offset, count, SocketFlags.None);
 #endif
             }
             catch (SocketException ex)

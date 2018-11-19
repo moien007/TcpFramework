@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard1.3;netcoreapp2.1;net45</TargetFrameworks>
-    <Authors>Moien007</Authors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>1701;1702;1591</NoWarn>
+    
     <Company />
     <Description>( High-performance  |  Async |  Lightweight ) TCP networking library for .NET</Description>
     <PackageLicenseUrl>https://github.com/moien007/TcpFramework/blob/master/LICENSE</PackageLicenseUrl>
@@ -18,12 +20,7 @@
 </PackageReleaseNotes>
     <PackageTags>tcp;networking;sockets;</PackageTags>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
-    <DocumentationFile>bin\Release\netstandard2.0\TcpFramework.xml</DocumentationFile>
-    <NoWarn>1701;1702;1591</NoWarn>
-  </PropertyGroup>
-
+  
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.3'">
     <PackageReference Include="System.Threading.Thread" Version="4.3.0" />
     <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
